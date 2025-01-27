@@ -8,7 +8,12 @@ type User struct {
   LastName     string
   Email        string
   PasswordHash string
+  Role         int
   CreatedAt    time.Time
   UpdatedAt    time.Time
-  Status       string
+  Status       int
+}
+
+type UserListFilters struct {
+  IDs []string
 }
