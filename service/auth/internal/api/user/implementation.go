@@ -43,7 +43,7 @@ func (i *Implementation) Create(ctx context.Context, req *userApi.CreateRequest)
 
 // Get handles the Get RPC
 func (i *Implementation) Get(ctx context.Context, req *userApi.GetRequest) (*userApi.GetResponse, error) {
-  user, err := i.userService.Get(ctx, req.GetId())
+  user, err := i.userService.GetByID(ctx, req.GetId())
   if err != nil {
     return nil, err
   }

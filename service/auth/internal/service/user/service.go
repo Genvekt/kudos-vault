@@ -4,21 +4,25 @@ import (
   "context"
   "fmt"
   "github.com/google/uuid"
-  "golang.org/x/crypto/bcrypt"
 
   "github.com/Genvekt/kudos-vault/service/auth/internal/model"
   "github.com/Genvekt/kudos-vault/service/auth/internal/repository"
   "github.com/Genvekt/kudos-vault/service/auth/internal/service"
+  "github.com/Genvekt/kudos-vault/service/auth/internal/utils"
 )
 
 var _ service.UserService = (*userService)(nil)
 
 type userService struct {
-  repo repository.UserRepository
+  repo   repository.UserRepository
+  hasher utils.Hasher
 }
 
-func NewService(repo repository.UserRepository) *userService {
-  return &userService{repo: repo}
+func NewUserService(
+  repo repository.UserRepository,
+  hasher utils.Hasher,
+) *userService {
+  return &userService{repo: repo, hasher: hasher}
 }
 
 func (s *userService) Create(ctx context.Context, user *model.User, password string) (string, error) {
@@ -29,7 +33,7 @@ func (s *userService) Create(ctx context.Context, user *model.User, password str
 
   user.ID = id
 
-  passwordHash, err := hashPassword(password)
+  passwordHash, err := s.hasher.HashPassword(ctx, password)
   if err != nil {
     return "", fmt.Errorf("failed to hash password: %w", err)
   }
@@ -44,8 +48,17 @@ func (s *userService) Create(ctx context.Context, user *model.User, password str
   return user.ID, nil
 }
 
-func (s *userService) Get(ctx context.Context, id string) (*model.User, error) {
-  user, err := s.repo.Get(ctx, id)
+func (s *userService) GetByID(ctx context.Context, id string) (*model.User, error) {
+  user, err := s.repo.GetByID(ctx, id)
+  if err != nil {
+    return nil, err
+  }
+
+  return user, nil
+}
+
+func (s *userService) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+  user, err := s.repo.GetByEmail(ctx, email)
   if err != nil {
     return nil, err
   }
@@ -69,13 +82,4 @@ func generateID() (string, error) {
   }
 
   return rawUuid.String(), nil
-}
-
-func hashPassword(password string) (string, error) {
-  hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-  if err != nil {
-    return "", err
-  }
-
-  return string(hash), nil
 }

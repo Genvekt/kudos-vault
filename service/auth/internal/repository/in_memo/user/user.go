@@ -31,7 +31,7 @@ func (r *inMemoryUserRepository) Create(ctx context.Context, user *model.User) e
   return nil
 }
 
-func (r *inMemoryUserRepository) Get(ctx context.Context, id string) (*model.User, error) {
+func (r *inMemoryUserRepository) GetByID(ctx context.Context, id string) (*model.User, error) {
   r.mu.RLock()
   defer r.mu.RUnlock()
   user, exists := r.users[id]
@@ -39,6 +39,19 @@ func (r *inMemoryUserRepository) Get(ctx context.Context, id string) (*model.Use
     return nil, errors.New("user not found")
   }
   return user, nil
+}
+
+func (r *inMemoryUserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+  r.mu.RLock()
+  defer r.mu.RUnlock()
+
+  for _, user := range r.users {
+    if user.Email == email {
+      return user, nil
+    }
+  }
+
+  return nil, errors.New("user not found")
 }
 
 func (r *inMemoryUserRepository) GetList(ctx context.Context, filters *model.UserListFilters) ([]*model.User, error) {
