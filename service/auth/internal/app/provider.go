@@ -2,13 +2,21 @@ package app
 
 import (
   "context"
+  "log"
 
   authApi "github.com/Genvekt/kudos-vault/service/auth/internal/api/auth"
   userApi "github.com/Genvekt/kudos-vault/service/auth/internal/api/user"
+  "github.com/Genvekt/kudos-vault/service/auth/internal/config"
+  envConf "github.com/Genvekt/kudos-vault/service/auth/internal/config/env"
   "github.com/Genvekt/kudos-vault/service/auth/internal/repository"
   "github.com/Genvekt/kudos-vault/service/auth/internal/service"
+  "github.com/Genvekt/kudos-vault/service/auth/internal/utils"
+  "github.com/Genvekt/kudos-vault/service/auth/internal/utils/token"
+
+  "github.com/Genvekt/kudos-vault/service/auth/internal/utils/hash"
 
   userRepo "github.com/Genvekt/kudos-vault/service/auth/internal/repository/in_memo/user"
+  authServ "github.com/Genvekt/kudos-vault/service/auth/internal/service/auth"
   userServ "github.com/Genvekt/kudos-vault/service/auth/internal/service/user"
 )
 
@@ -16,8 +24,17 @@ type Provider struct {
   authImpl *authApi.Implementation
   userImpl *userApi.Implementation
 
-  userService    service.UserService
+  userService service.UserService
+  authService service.AuthService
+
   userRepository repository.UserRepository
+
+  hasher                utils.Hasher
+  accessTockenProvider  utils.TokenProvider
+  refreshTockenProvider utils.TokenProvider
+
+  accessTokenConfig  config.TokenConfig
+  refreshTokenConfig config.TokenConfig
 }
 
 func newProvider() *Provider {
@@ -26,7 +43,7 @@ func newProvider() *Provider {
 
 func (p *Provider) AuthImpl(ctx context.Context) *authApi.Implementation {
   if p.authImpl == nil {
-    p.authImpl = authApi.NewImplementation()
+    p.authImpl = authApi.NewImplementation(p.AuthService(ctx))
   }
 
   return p.authImpl
@@ -42,10 +59,24 @@ func (p *Provider) UserImpl(ctx context.Context) *userApi.Implementation {
 
 func (p *Provider) UserService(ctx context.Context) service.UserService {
   if p.userService == nil {
-    p.userService = userServ.NewService(p.UserRepo(ctx))
+    p.userService = userServ.NewUserService(p.UserRepo(ctx), p.Hasher(ctx))
   }
 
   return p.userService
+}
+
+func (p *Provider) AuthService(ctx context.Context) service.AuthService {
+  if p.authService == nil {
+    p.authService = authServ.NewAuthService(
+      ctx,
+      p.UserService(ctx),
+      p.RefreshTokenProvider(ctx),
+      p.AccessTokenProvider(ctx),
+      p.Hasher(ctx),
+    )
+  }
+
+  return p.authService
 }
 
 func (p *Provider) UserRepo(ctx context.Context) repository.UserRepository {
@@ -54,4 +85,54 @@ func (p *Provider) UserRepo(ctx context.Context) repository.UserRepository {
   }
 
   return p.userRepository
+}
+
+func (p *Provider) Hasher(ctx context.Context) utils.Hasher {
+  if p.hasher == nil {
+    p.hasher = hash.NewHasher()
+  }
+
+  return p.hasher
+}
+
+func (p *Provider) RefreshTokenProvider(ctx context.Context) utils.TokenProvider {
+  if p.refreshTockenProvider == nil {
+    p.refreshTockenProvider = token.NewTokenProvider(ctx, p.RefreshTokenConfig(ctx))
+  }
+
+  return p.refreshTockenProvider
+}
+
+func (p *Provider) AccessTokenProvider(ctx context.Context) utils.TokenProvider {
+  if p.accessTockenProvider == nil {
+    p.accessTockenProvider = token.NewTokenProvider(ctx, p.AccessTokenConfig(ctx))
+  }
+
+  return p.accessTockenProvider
+}
+
+func (p *Provider) RefreshTokenConfig(ctx context.Context) config.TokenConfig {
+  if p.refreshTokenConfig == nil {
+    conf, err := envConf.NewRefreshTokenEnvConfig(ctx)
+    if err != nil {
+      log.Fatal(err)
+    }
+
+    p.refreshTokenConfig = conf
+  }
+
+  return p.refreshTokenConfig
+}
+
+func (p *Provider) AccessTokenConfig(ctx context.Context) config.TokenConfig {
+  if p.accessTokenConfig == nil {
+    conf, err := envConf.NewAccessTokenEnvConfig(ctx)
+    if err != nil {
+      log.Fatal(err)
+    }
+
+    p.accessTokenConfig = conf
+  }
+
+  return p.accessTokenConfig
 }
