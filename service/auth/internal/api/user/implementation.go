@@ -27,8 +27,8 @@ func (i *Implementation) Create(ctx context.Context, req *userApi.CreateRequest)
     FirstName: req.GetData().GetFirstName(),
     LastName:  req.GetData().GetLastName(),
     Email:     req.GetData().GetEmail(),
-    Role:      int(req.GetData().GetRole()),
-    Status:    int(userApi.UserStatus_ACTIVE), // Default status
+    Role:      req.GetData().GetRole().String(),
+    Status:    userApi.UserStatus_STATUS_ACTIVE.String(), // Default status
     CreatedAt: time.Now(),
     UpdatedAt: time.Now(),
   }

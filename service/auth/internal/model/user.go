@@ -8,10 +8,10 @@ type User struct {
   LastName     string
   Email        string
   PasswordHash string
-  Role         int
+  Role         string
   CreatedAt    time.Time
   UpdatedAt    time.Time
-  Status       int
+  Status       string
 }
 
 type UserListFilters struct {

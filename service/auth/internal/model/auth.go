@@ -8,6 +8,6 @@ type UserClaims struct {
   ID        string `json:"id"`
   FirstName string `json:"first_name"`
   LastName  string `json:"last_name"`
-  Role      int    `json:"role"`
-  Status    int    `json:"status"`
+  Role      string `json:"role"`
+  Status    string `json:"status"`
 }
