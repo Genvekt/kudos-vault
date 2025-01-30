@@ -1,4 +1,4 @@
-package user
+package in_memo
 
 import (
   "context"

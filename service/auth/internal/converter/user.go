@@ -13,17 +13,20 @@ func FromUserToProtoUser(u *model.User) *userApi.User {
     return nil
   }
 
+  userRoleID := userApi.UserRole_value[u.Role]
+  userStatusID := userApi.UserStatus_value[u.Status]
+
   return &userApi.User{
     Id: u.ID,
     Data: &userApi.UserData{
       FirstName: u.FirstName,
       LastName:  u.LastName,
       Email:     u.Email,
-      Role:      userApi.UserRole(u.Role),
+      Role:      userApi.UserRole(userRoleID),
     },
     CreatedAt: timestamppb.New(u.CreatedAt),
     UpdatedAt: timestamppb.New(u.UpdatedAt),
-    Status:    userApi.UserStatus(u.Status),
+    Status:    userApi.UserStatus(userStatusID),
   }
 }
 

@@ -4,6 +4,8 @@ import (
   "context"
   "log"
 
+  db "github.com/Genvekt/kudos-vault/library/pg_client"
+  "github.com/Genvekt/kudos-vault/library/pg_client/pg"
   authApi "github.com/Genvekt/kudos-vault/service/auth/internal/api/auth"
   userApi "github.com/Genvekt/kudos-vault/service/auth/internal/api/user"
   "github.com/Genvekt/kudos-vault/service/auth/internal/config"
@@ -15,7 +17,7 @@ import (
 
   "github.com/Genvekt/kudos-vault/service/auth/internal/utils/hash"
 
-  userRepo "github.com/Genvekt/kudos-vault/service/auth/internal/repository/in_memo/user"
+  userRepo "github.com/Genvekt/kudos-vault/service/auth/internal/repository/user/postgres"
   authServ "github.com/Genvekt/kudos-vault/service/auth/internal/service/auth"
   userServ "github.com/Genvekt/kudos-vault/service/auth/internal/service/user"
 )
@@ -29,12 +31,15 @@ type Provider struct {
 
   userRepository repository.UserRepository
 
+  pgClient db.Client
+
   hasher                utils.Hasher
   accessTockenProvider  utils.TokenProvider
   refreshTockenProvider utils.TokenProvider
 
   accessTokenConfig  config.TokenConfig
   refreshTokenConfig config.TokenConfig
+  pgConfig           config.PostgresConfig
 }
 
 func newProvider() *Provider {
@@ -81,7 +86,7 @@ func (p *Provider) AuthService(ctx context.Context) service.AuthService {
 
 func (p *Provider) UserRepo(ctx context.Context) repository.UserRepository {
   if p.userRepository == nil {
-    p.userRepository = userRepo.NewInMemoryRepository()
+    p.userRepository = userRepo.NewUserPgRepository(p.PgClient(ctx))
   }
 
   return p.userRepository
@@ -135,4 +140,35 @@ func (p *Provider) AccessTokenConfig(ctx context.Context) config.TokenConfig {
   }
 
   return p.accessTokenConfig
+}
+
+func (p *Provider) PgClient(ctx context.Context) db.Client {
+  if p.pgClient == nil {
+
+    pgClient, err := pg.New(ctx, p.PGConfig().DSN())
+    if err != nil {
+      log.Fatalf("failed to connect to postgres: %v", err)
+    }
+
+    if err := pgClient.DB().Ping(ctx); err != nil {
+      log.Fatalf("failed to ping postgres %v", err)
+    }
+
+    p.pgClient = pgClient
+  }
+
+  return p.pgClient
+}
+
+func (p *Provider) PGConfig() config.PostgresConfig {
+  if p.pgConfig == nil {
+    conf, err := envConf.NewPostgresConfigEnv()
+    if err != nil {
+      log.Fatal(err)
+    }
+
+    p.pgConfig = conf
+  }
+
+  return p.pgConfig
 }
